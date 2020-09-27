@@ -60,7 +60,7 @@ size_t control_block::ref_count_weak() const noexcept {
 control_block::control_block() noexcept: ref_cnt_shared(1), ref_cnt_weak(0) {}
 
 template<typename T, typename D = std::default_delete<T>>
-struct regular_control_block final : control_block {
+struct regular_control_block final : control_block, D { // inheritance from deleter to enable "empty base optimization"
     explicit regular_control_block(T* ptr, D deleter = std::default_delete<T>());
 
     void delete_object() noexcept override;
@@ -69,16 +69,15 @@ struct regular_control_block final : control_block {
 
 private:
     T* ptr = nullptr;
-    [[no_unique_address]] D deleter;
 };
 
 template<typename T, typename D>
 regular_control_block<T, D>::regular_control_block(T* ptr, D deleter)
-        : control_block(), ptr(ptr), deleter(std::move(deleter)) {}
+        : control_block(), D(std::move(deleter)), ptr(ptr) {}
 
 template<typename T, typename D>
 void regular_control_block<T, D>::delete_object() noexcept {
-    deleter(ptr);
+    static_cast<D&>(*this)(ptr);
 }
 
 template<typename T>
