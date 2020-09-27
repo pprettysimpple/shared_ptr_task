@@ -128,7 +128,7 @@ struct shared_ptr {
     constexpr explicit shared_ptr(std::nullptr_t) noexcept;
 
     template<typename Y, typename D = std::default_delete<Y>>
-    shared_ptr(Y* ptr, D deleter = std::default_delete<Y>());
+    explicit shared_ptr(Y* ptr, D deleter = std::default_delete<Y>());
 
     template<typename Y>
     shared_ptr(shared_ptr<Y> const& rhs) noexcept;
