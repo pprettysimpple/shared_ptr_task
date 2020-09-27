@@ -52,9 +52,10 @@ weak_ptr<T>::weak_ptr(weak_ptr const& r) noexcept
 }
 
 template<typename T>
-weak_ptr<T>::weak_ptr(weak_ptr&& r) noexcept {
-    r.swap(*this);
-    weak_ptr().swap(r);
+weak_ptr<T>::weak_ptr(weak_ptr&& r) noexcept
+        : cblock(r.cblock), ptr(r.ptr) {
+    r.cblock = nullptr;
+    r.ptr = nullptr;
 }
 
 template<typename T>
@@ -65,7 +66,9 @@ weak_ptr<T>& weak_ptr<T>::operator=(weak_ptr const& rhs) noexcept {
 
 template<typename T>
 weak_ptr<T>& weak_ptr<T>::operator=(weak_ptr&& rhs) noexcept {
-    weak_ptr(std::move(rhs)).swap(*this);
+    if (cblock != rhs.cblock) {
+        weak_ptr(std::move(rhs)).swap(*this);
+    }
     return *this;
 }
 
@@ -83,8 +86,7 @@ weak_ptr<T>::~weak_ptr() noexcept {
     if (cblock == nullptr) {
         return;
     }
-    cblock->dec_ref_weak();
-    if (cblock->ref_count_weak() == 0 && cblock->ref_count_shared() == 0) {
+    if (cblock->dec_ref_weak()) {
         delete cblock;
     }
 }
@@ -125,11 +127,8 @@ struct shared_ptr {
 
     constexpr explicit shared_ptr(std::nullptr_t) noexcept;
 
-    template<typename Y>
-    explicit shared_ptr(Y* ptr);
-
-    template<typename Y, typename D>
-    shared_ptr(Y* ptr, D deleter);
+    template<typename Y, typename D = std::default_delete<Y>>
+    shared_ptr(Y* ptr, D deleter = std::default_delete<Y>());
 
     template<typename Y>
     shared_ptr(shared_ptr<Y> const& rhs) noexcept;
@@ -166,11 +165,8 @@ struct shared_ptr {
 
     void reset() noexcept;
 
-    template<typename Y>
-    void reset(Y* rhs) noexcept;
-
-    template<class Y, class Deleter>
-    void reset(Y* ptr, Deleter d);
+    template<class Y, class Deleter = std::default_delete<Y>>
+    void reset(Y* ptr, Deleter&& d = std::default_delete<Y>());
 
     void swap(shared_ptr&) noexcept;
 
@@ -209,15 +205,6 @@ shared_ptr<T> make_shared(Args&& ... args) {
 }
 
 template<typename T>
-template<typename Y>
-shared_ptr<T>::shared_ptr(Y* p)
-try : cblock(new regular_control_block(p)), ptr(p) {}
-catch (...) {
-    delete p;
-    throw;
-}
-
-template<typename T>
 template<typename Y, typename D>
 shared_ptr<T>::shared_ptr(Y* p, D deleter)
 try : cblock(new regular_control_block(p, deleter)), ptr(p) {}
@@ -244,9 +231,10 @@ template<typename T>
 constexpr shared_ptr<T>::shared_ptr(std::nullptr_t) noexcept {}
 
 template<typename T>
-shared_ptr<T>::shared_ptr(shared_ptr&& rhs) noexcept {
-    rhs.swap(*this);
-    shared_ptr().swap(rhs);
+shared_ptr<T>::shared_ptr(shared_ptr&& rhs)  noexcept
+        : cblock(rhs.cblock), ptr(rhs.ptr) {
+    rhs.cblock = nullptr;
+    rhs.ptr = nullptr;
 }
 
 template<typename T>
@@ -266,7 +254,9 @@ shared_ptr<T>& shared_ptr<T>::operator=(shared_ptr const& rhs) noexcept {
 
 template<typename T>
 shared_ptr<T>& shared_ptr<T>::operator=(shared_ptr&& rhs) noexcept {
-    shared_ptr(std::move(rhs)).swap(*this);
+    if (cblock != rhs.cblock) {
+        shared_ptr(std::move(rhs)).swap(*this);
+    }
     return *this;
 }
 
@@ -303,15 +293,9 @@ void shared_ptr<T>::reset() noexcept {
 }
 
 template<typename T>
-template<typename Y>
-void shared_ptr<T>::reset(Y* rhs) noexcept {
-    shared_ptr<T>(rhs).swap(*this);
-}
-
-template<typename T>
-template<class Y, class Deleter>
-void shared_ptr<T>::reset(Y* p, Deleter d) {
-    shared_ptr<T>(p, d).swap(*this);
+template<class Y, class D>
+void shared_ptr<T>::reset(Y* p, D&& deleter) {
+    shared_ptr<T>(p, std::forward<D>(deleter)).swap(*this);
 }
 
 template<typename T>
@@ -319,12 +303,8 @@ shared_ptr<T>::~shared_ptr() {
     if (cblock == nullptr) {
         return;
     }
-    cblock->dec_ref_shared();
-    if (cblock->ref_count_shared() == 0) {
-        cblock->delete_object();
-        if (cblock->ref_count_weak() == 0) {
-            delete cblock;
-        }
+    if (cblock->dec_ref_shared()) {
+        delete cblock;
     }
 }
 

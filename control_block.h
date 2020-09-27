@@ -16,9 +16,9 @@ struct control_block {
 
     void add_ref_weak() noexcept;
 
-    void dec_ref_shared() noexcept;
+    [[nodiscard]] bool dec_ref_shared() noexcept;
 
-    void dec_ref_weak() noexcept;
+    [[nodiscard]] bool dec_ref_weak() noexcept;
 
     size_t ref_count_shared() const noexcept;
 
@@ -41,12 +41,19 @@ void control_block::add_ref_weak() noexcept {
     ++ref_cnt_weak;
 }
 
-void control_block::dec_ref_shared() noexcept {
+bool control_block::dec_ref_shared() noexcept {
     --ref_cnt_shared;
+    if (ref_count_shared() == 0) {
+        delete_object();
+        if (ref_count_weak() == 0) {
+            return true;
+        }
+    }
+    return false;
 }
 
-void control_block::dec_ref_weak() noexcept {
-    --ref_cnt_weak;
+bool control_block::dec_ref_weak() noexcept {
+    return --ref_cnt_weak == 0 && ref_cnt_shared == 0;
 }
 
 size_t control_block::ref_count_shared() const noexcept {
