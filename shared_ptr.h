@@ -66,7 +66,7 @@ weak_ptr<T>& weak_ptr<T>::operator=(weak_ptr const& rhs) noexcept {
 
 template<typename T>
 weak_ptr<T>& weak_ptr<T>::operator=(weak_ptr&& rhs) noexcept {
-    if (cblock != rhs.cblock) {
+    if (this != &rhs) {
         weak_ptr(std::move(rhs)).swap(*this);
     }
     return *this;
@@ -254,7 +254,7 @@ shared_ptr<T>& shared_ptr<T>::operator=(shared_ptr const& rhs) noexcept {
 
 template<typename T>
 shared_ptr<T>& shared_ptr<T>::operator=(shared_ptr&& rhs) noexcept {
-    if (cblock != rhs.cblock) {
+    if (this != &rhs) {
         shared_ptr(std::move(rhs)).swap(*this);
     }
     return *this;
