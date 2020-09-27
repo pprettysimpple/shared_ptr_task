@@ -46,10 +46,9 @@ private:
 template<typename T>
 weak_ptr<T>::weak_ptr(weak_ptr const& r) noexcept
         : cblock(r.cblock), ptr(r.ptr) {
-    if (cblock == nullptr) {
-        return;
+    if (cblock != nullptr) {
+        cblock->add_ref_weak();
     }
-    cblock->add_ref_weak();
 }
 
 template<typename T>
@@ -74,10 +73,9 @@ template<typename T>
 template<typename Y>
 weak_ptr<T>::weak_ptr(shared_ptr<Y>& r) noexcept
         : cblock(r.cblock), ptr(r.ptr) {
-    if (cblock == nullptr) {
-        return;
+    if (cblock != nullptr) {
+        cblock->add_ref_weak();
     }
-    cblock->add_ref_weak();
 }
 
 template<typename T>
@@ -188,19 +186,17 @@ template<typename T>
 template<typename Y>
 shared_ptr<T>::shared_ptr(shared_ptr<Y> const& rhs) noexcept
         : cblock(rhs.cblock), ptr(rhs.ptr) {
-    if (cblock == nullptr) {
-        return;
+    if (cblock != nullptr) {
+        cblock->add_ref_shared();
     }
-    cblock->add_ref_shared();
 }
 
 template<typename T>
 shared_ptr<T>::shared_ptr(shared_ptr const& rhs) noexcept
         : cblock(rhs.cblock), ptr(rhs.ptr) {
-    if (cblock == nullptr) {
-        return;
+    if (cblock != nullptr) {
+        cblock->add_ref_shared();
     }
-    cblock->add_ref_shared();
 }
 
 template<typename T, typename... Args>
@@ -214,24 +210,20 @@ shared_ptr<T> make_shared(Args&& ... args) {
 
 template<typename T>
 template<typename Y>
-shared_ptr<T>::shared_ptr(Y* p) {
-    try {
-        cblock = new regular_control_block(p);
-        ptr = p;
-    } catch(...) {
-        delete p;
-    };
+shared_ptr<T>::shared_ptr(Y* p)
+try : cblock(new regular_control_block(p)), ptr(p) {}
+catch (...) {
+    delete p;
+    throw;
 }
 
 template<typename T>
 template<typename Y, typename D>
-shared_ptr<T>::shared_ptr(Y* p, D deleter) {
-    try {
-        cblock = new regular_control_block(p, deleter);
-        ptr = p;
-    } catch(...) {
-        deleter(p);
-    };
+shared_ptr<T>::shared_ptr(Y* p, D deleter)
+try : cblock(new regular_control_block(p, deleter)), ptr(p) {}
+catch (...) {
+    deleter(p);
+    throw;
 }
 
 template<typename T>
@@ -243,10 +235,9 @@ template<typename T>
 template<class Y>
 shared_ptr<T>::shared_ptr(shared_ptr<Y> const& r, T* ptr) noexcept
         : cblock(r.cblock), ptr(ptr) {
-    if (cblock == nullptr) {
-        return;
+    if (cblock != nullptr) {
+        cblock->add_ref_shared();
     }
-    cblock->add_ref_shared();
 }
 
 template<typename T>
@@ -262,10 +253,9 @@ template<typename T>
 template<class Y>
 shared_ptr<T>::shared_ptr(weak_ptr<Y> const& r)
         : cblock(r.cblock), ptr(r.ptr) {
-    if (cblock == nullptr) {
-        return;
+    if (cblock != nullptr) {
+        cblock->add_ref_shared();
     }
-    cblock->add_ref_shared();
 }
 
 template<typename T>
