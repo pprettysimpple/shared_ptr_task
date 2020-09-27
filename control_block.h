@@ -65,16 +65,16 @@ struct regular_control_block final : control_block {
 
     void delete_object() noexcept override;
 
-    ~regular_control_block() noexcept override = default;
+    ~regular_control_block() override = default;
 
 private:
     T* ptr = nullptr;
-    D deleter = std::default_delete<T>();
+    [[no_unique_address]] D deleter;
 };
 
 template<typename T, typename D>
 regular_control_block<T, D>::regular_control_block(T* ptr, D deleter)
-        : control_block(), ptr(ptr), deleter(deleter) {}
+        : control_block(), ptr(ptr), deleter(std::move(deleter)) {}
 
 template<typename T, typename D>
 void regular_control_block<T, D>::delete_object() noexcept {
@@ -90,7 +90,7 @@ struct inplace_control_block final : control_block {
 
     void delete_object() noexcept override;
 
-    ~inplace_control_block() noexcept override = default;
+    ~inplace_control_block() override = default;
 
 private:
     typename std::aligned_storage<sizeof(T), alignof(T)>::type stg;
